@@ -35,6 +35,11 @@ const COLORS = ["#FF69B4", "#0F172A", "#10B981", "#F59E0B", "#6366F1", "#EC4899"
 type ReportPayload = {
   chart: { name: string; value: number }[];
   monthlyTable: { month: string; receita: number; despesa: number; saldo: number }[];
+  monthlyReceitaByTurma: {
+    turmas: string[];
+    rows: Array<{ month: string; byTurma: Record<string, number>; rowTotal: number }>;
+  };
+  turmaColumnTotals: Record<string, number>;
   revenueByCategory: { name: string; value: number }[];
   expenseByCategory: { name: string; value: number }[];
   byTurma: { name: string; value: number }[];
@@ -71,6 +76,9 @@ export function Reports() {
     return <p className="text-center text-rose-600 py-20 font-medium">Erro ao carregar relatórios.</p>;
   }
 
+  const turmaMonth = data.monthlyReceitaByTurma ?? { turmas: [] as string[], rows: [] as ReportPayload["monthlyReceitaByTurma"]["rows"] };
+  const turmaTotals = data.turmaColumnTotals ?? {};
+
   const exportFull = () => {
     const lines = [
       "=== Mensal ===",
@@ -84,8 +92,15 @@ export function Reports() {
       "=== Despesa por categoria ===",
       ...data.expenseByCategory.map((r) => `${r.name},${r.value}`),
       "",
-      "=== Por turma ===",
+      "=== Por turma (12m) ===",
       ...data.byTurma.map((r) => `${r.name},${r.value}`),
+      "",
+      "=== Receita paga por mês e turma ===",
+      ["Mês", ...turmaMonth.turmas, "Total linha"].join(","),
+      ...turmaMonth.rows.map((r) =>
+        [r.month, ...turmaMonth.turmas.map((t) => r.byTurma[t] ?? 0), r.rowTotal].join(","),
+      ),
+      ["Total coluna", ...turmaMonth.turmas.map((t) => turmaTotals[t] ?? 0), ""].join(","),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
@@ -302,6 +317,75 @@ export function Reports() {
               <span className="text-sm font-black text-amber-300">{formatCurrency(p.total)}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-4 md:p-6 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            Resumo mensal por turma (receita paga)
+          </h3>
+          <p className="text-xs text-slate-500 mt-2 max-w-3xl leading-relaxed">
+            Cada célula soma entradas <strong className="text-slate-700">pagas</strong> atribuídas à turma no mês. Usa o repasse em{" "}
+            <strong className="text-slate-700">conciliação</strong> quando existir; com várias turmas no mesmo lançamento, o valor é
+            dividido igualmente. Lançamentos sem turma não entram nesta matriz (podem aparecer na receita geral).
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-max">
+            <thead>
+              <tr className="text-[10px] font-black text-slate-400 uppercase border-b border-slate-100 bg-slate-50/80">
+                <th className="px-4 py-3 sticky left-0 z-10 bg-slate-50/95 backdrop-blur-sm border-r border-slate-100 min-w-[5.5rem]">
+                  Mês
+                </th>
+                {turmaMonth.turmas.map((t) => (
+                  <th
+                    key={t}
+                    title={t}
+                    className="px-3 py-3 text-right whitespace-nowrap max-w-[7.5rem] truncate font-bold text-slate-600"
+                  >
+                    {t.replace(/^Redação\s+/i, "R. ").replace(/^Exatas\s+/i, "Ex. ").replace(/^Matematica\s+/i, "Mat. ")}
+                  </th>
+                ))}
+                <th className="px-4 py-3 text-right font-black text-slate-700 bg-primary/5">Total mês</th>
+              </tr>
+            </thead>
+            <tbody>
+              {turmaMonth.rows.map((r, i) => (
+                <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/60 group/tr">
+                  <td className="px-4 py-2.5 font-bold text-slate-800 sticky left-0 z-10 bg-white/95 group-hover/tr:bg-slate-50 border-r border-slate-100">
+                    {r.month}
+                  </td>
+                  {turmaMonth.turmas.map((t) => {
+                    const v = r.byTurma[t] ?? 0;
+                    return (
+                      <td key={t} className={cn("px-3 py-2.5 text-right tabular-nums", v > 0 ? "text-emerald-700 font-semibold" : "text-slate-300")}>
+                        {v > 0 ? formatCurrency(v) : "—"}
+                      </td>
+                    );
+                  })}
+                  <td className="px-4 py-2.5 text-right font-black text-slate-900 tabular-nums bg-primary/[0.04]">
+                    {r.rowTotal > 0 ? formatCurrency(r.rowTotal) : "—"}
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-slate-900 text-white font-black border-t-2 border-primary">
+                <td className="px-4 py-3 sticky left-0 z-10 bg-slate-900 border-r border-slate-700">12 meses</td>
+                {turmaMonth.turmas.map((t) => {
+                  const v = turmaTotals[t] ?? 0;
+                  return (
+                    <td key={t} className="px-3 py-3 text-right tabular-nums text-emerald-300">
+                      {v > 0 ? formatCurrency(v) : "—"}
+                    </td>
+                  );
+                })}
+                <td className="px-4 py-3 text-right tabular-nums text-white bg-primary/30">
+                  {formatCurrency(turmaMonth.rows.reduce((s, x) => s + x.rowTotal, 0))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 

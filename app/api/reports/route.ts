@@ -2,18 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { TURMAS } from "@/lib/orgConstants";
+import { allocatePaidInflowToTurmas } from "@/lib/allocateInflowByTurma";
 
 const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-function parseTurmas(s: string | null): string[] {
-  if (!s) return [];
-  try {
-    const x = JSON.parse(s) as unknown;
-    return Array.isArray(x) ? x.filter((t) => typeof t === "string") : [];
-  } catch {
-    return [];
-  }
-}
 
 export async function GET() {
   const session = await getSessionUser();
@@ -86,17 +77,69 @@ export async function GET() {
 
   const turmaMap = new Map<string, number>();
   for (const t of paidIn) {
-    const tags = parseTurmas(t.turmas);
-    const use = tags.length ? tags : t.group ? [t.group] : [];
-    for (const tag of use) {
-      if ((TURMAS as readonly string[]).includes(tag)) {
-        turmaMap.set(tag, (turmaMap.get(tag) ?? 0) + t.amount);
-      }
-    }
+    allocatePaidInflowToTurmas(t).forEach((amt, turma) => {
+      turmaMap.set(turma, (turmaMap.get(turma) ?? 0) + amt);
+    });
   }
   const byTurma = Array.from(turmaMap.entries())
     .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
     .sort((a, b) => b.value - a.value);
+
+  /** Mês → turma → receita paga atribuída (mesma lógica que “Receita por turma”). */
+  const monthTurmaMatrix = new Map<string, Map<string, number>>();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    monthTurmaMatrix.set(key, new Map());
+  }
+  for (const t of paidIn) {
+    const d = new Date(t.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const row = monthTurmaMatrix.get(key);
+    if (!row) continue;
+    allocatePaidInflowToTurmas(t).forEach((amt, turma) => {
+      row.set(turma, Math.round(((row.get(turma) ?? 0) + amt) * 100) / 100);
+    });
+  }
+
+  const turmasWithData = TURMAS.filter((name) => {
+    let sum = 0;
+    monthTurmaMatrix.forEach((m) => {
+      sum += m.get(name) ?? 0;
+    });
+    return sum > 0;
+  });
+
+  const monthlyReceitaByTurma = {
+    turmas: turmasWithData.length ? turmasWithData : [...TURMAS],
+    rows: [] as Array<{ month: string; byTurma: Record<string, number>; rowTotal: number }>,
+  };
+
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const m = monthTurmaMatrix.get(key)!;
+    const labels = monthlyReceitaByTurma.turmas;
+    const byTurma: Record<string, number> = {};
+    let rowTotal = 0;
+    for (const turma of labels) {
+      const v = m.get(turma) ?? 0;
+      byTurma[turma] = v;
+      rowTotal += v;
+    }
+    monthlyReceitaByTurma.rows.push({
+      month: `${MONTHS_PT[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`,
+      byTurma,
+      rowTotal: Math.round(rowTotal * 100) / 100,
+    });
+  }
+
+  const turmaColumnTotals: Record<string, number> = {};
+  for (const turma of monthlyReceitaByTurma.turmas) {
+    let s = 0;
+    for (const r of monthlyReceitaByTurma.rows) s += r.byTurma[turma] ?? 0;
+    turmaColumnTotals[turma] = Math.round(s * 100) / 100;
+  }
 
   const accMap = new Map<string, { in: number; out: number }>();
   for (const t of txs) {
@@ -144,6 +187,8 @@ export async function GET() {
   return NextResponse.json({
     chart,
     monthlyTable,
+    monthlyReceitaByTurma,
+    turmaColumnTotals,
     revenueByCategory,
     expenseByCategory,
     byTurma,
