@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter, useSearchParams } from "next/navigation";
 import { invalidateFinancialQueries } from "@/lib/invalidateFinancialQueries";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
@@ -15,7 +16,7 @@ import { Reports } from "@/components/Reports";
 import { Students } from "@/components/Students";
 import { Settings } from "@/components/Settings";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, UserPlus, ArrowUpCircle, X } from "lucide-react";
+import { Plus, UserPlus, ArrowUpCircle, X, LayoutDashboard, GraduationCap, Users } from "lucide-react";
 
 function NavigateTabBridge({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
   useEffect(() => {
@@ -38,6 +39,90 @@ function DataRefreshBridge() {
     return () => window.removeEventListener("fin:refresh", fn);
   }, [qc]);
   return null;
+}
+
+function PostLoginWelcome({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const entered = searchParams.get("entered") === "1";
+  const [gone, setGone] = useState(false);
+
+  useEffect(() => {
+    if (!entered) return;
+    invalidateFinancialQueries(qc);
+  }, [entered, qc]);
+
+  if (!entered || gone) return null;
+
+  const close = () => {
+    setGone(true);
+    router.replace("/", { scroll: false });
+  };
+
+  const go = (tab: string) => {
+    setActiveTab(tab);
+    close();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative mb-5 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/95 via-white to-white px-4 py-4 md:px-6 shadow-sm"
+    >
+      <button
+        type="button"
+        onClick={close}
+        className="absolute top-3 right-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+        aria-label="Fechar aviso"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <div className="pr-10 space-y-1">
+        <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Bem-vindo ao painel</p>
+        <p className="text-sm md:text-base text-slate-800 font-medium leading-snug">
+          Esta conta vê os <strong>dados já cadastrados</strong> da Redação no mesmo banco: receitas, despesas, alunos,
+          turmas e histórico de importação. Nada fica “preso” a outro login — todos os usuários autorizados
+          compartilham esta visão.
+        </p>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => go("dashboard")}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm hover:border-primary/40"
+        >
+          <LayoutDashboard className="w-4 h-4 text-primary" />
+          Painel geral
+        </button>
+        <button
+          type="button"
+          onClick={() => go("students")}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm hover:border-primary/40"
+        >
+          <GraduationCap className="w-4 h-4 text-primary" />
+          Alunos
+        </button>
+        <button
+          type="button"
+          onClick={() => go("inflows")}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm hover:border-primary/40"
+        >
+          <ArrowUpCircle className="w-4 h-4 text-emerald-600" />
+          Entradas
+        </button>
+        <button
+          type="button"
+          onClick={() => go("turmas")}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm hover:border-primary/40"
+        >
+          <Users className="w-4 h-4 text-primary" />
+          Turmas
+        </button>
+      </div>
+    </motion.div>
+  );
 }
 
 export default function App() {
@@ -80,6 +165,9 @@ export default function App() {
         <Topbar />
         
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <Suspense fallback={null}>
+            <PostLoginWelcome setActiveTab={setActiveTab} />
+          </Suspense>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}

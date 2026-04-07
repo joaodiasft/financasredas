@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 /** Invalida só caches financeiros (evita refetch em massa desnecessário). */
 export function invalidateFinancialQueries(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ["me"] });
   qc.invalidateQueries({ queryKey: ["dashboard"] });
   qc.invalidateQueries({ queryKey: ["transactions"] });
   qc.invalidateQueries({ queryKey: ["outflow-summary"] });

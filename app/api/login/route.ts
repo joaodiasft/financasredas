@@ -32,7 +32,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "Credenciais inválidas" }, { status: 401 });
   }
 
-  const token = await sign({ email: user.email, role: "admin", sub: user.id });
+  const token = await sign({
+    email: user.email,
+    role: "admin",
+    sub: user.id,
+    name: user.name ?? undefined,
+  });
 
   const response = NextResponse.json({ success: true });
   response.cookies.set("session", token, {

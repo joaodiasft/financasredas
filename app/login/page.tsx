@@ -25,7 +25,7 @@ export default function LoginPage() {
       });
 
       if (res.ok) {
-        router.push("/");
+        router.push("/?entered=1");
         router.refresh();
       } else {
         setError("Credenciais inválidas");
@@ -50,6 +50,10 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Redação Financeiro</h1>
           <p className="text-slate-500 mt-1">Acesse sua conta com segurança</p>
+          <p className="text-slate-600 text-sm mt-3 leading-relaxed text-left px-1">
+            Cada login autorizado entra no <strong className="text-slate-800">mesmo painel</strong>: você verá todos os
+            lançamentos, alunos e turmas já cadastrados no sistema.
+          </p>
           {process.env.NODE_ENV === "development" ? (
             <p className="text-xs text-slate-400 mt-3 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
               Dev: após migrar o banco, rode <code className="text-[10px]">npm run db:seed</code>. Conta principal{" "}
