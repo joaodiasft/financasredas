@@ -62,17 +62,17 @@ export function ReconcileStudentModal({
     };
   }, [transactionId]);
 
+  const turmaA = turmas[0];
+  const turmaB = turmas[1];
   useEffect(() => {
-    if (turmas.length === 2) {
-      const a = turmas[0];
-      const b = turmas[1];
+    if (turmas.length === 2 && turmaA && turmaB) {
       const half = (amount / 2).toFixed(2);
       const rest = (amount - parseFloat(half)).toFixed(2);
-      setAmtByTurma({ [a]: half, [b]: rest });
+      setAmtByTurma({ [turmaA]: half, [turmaB]: rest });
     } else {
       setAmtByTurma({});
     }
-  }, [turmas[0] ?? "", turmas[1] ?? "", amount]);
+  }, [turmas.length, turmaA, turmaB, amount]);
 
   function pickSuggestion(s: SuggestionRow) {
     setStudentId(s.id);

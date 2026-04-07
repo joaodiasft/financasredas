@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
-import { TURMAS } from "@/lib/orgConstants";
+import { canonicalTurmaName } from "@/lib/turmaCanonical";
 
 const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -116,8 +116,9 @@ export async function GET() {
     const tags = parseTurmas(t.turmas);
     const tagsUse = tags.length ? tags : t.group ? [t.group] : [];
     for (const tag of tagsUse) {
-      if ((TURMAS as readonly string[]).includes(tag)) {
-        turmaTotals.set(tag, (turmaTotals.get(tag) ?? 0) + t.amount);
+      const c = canonicalTurmaName(tag);
+      if (c) {
+        turmaTotals.set(c, (turmaTotals.get(c) ?? 0) + t.amount);
       }
     }
   }

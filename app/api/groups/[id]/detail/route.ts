@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
-import { inflowWhereForTurmaName } from "@/lib/turmaTransactionFilter";
+import { inflowWhereForTurmaName, turmaNameVariantsForStudentMatch } from "@/lib/turmaCanonical";
 
 function parseTurmasJson(s: string | null): string[] {
   if (!s) return [];
@@ -26,12 +26,13 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
   const name = group.name;
   const baseWhere = inflowWhereForTurmaName(name);
+  const studentTurmaOr = turmaNameVariantsForStudentMatch(name).flatMap((v) => [{ turma1: v }, { turma2: v }]);
 
   const [students, txs, paidSum, pendingSum, paidCount, pendingCount] = await Promise.all([
     prisma.student.findMany({
       where: {
         active: true,
-        OR: [{ turma1: name }, { turma2: name }],
+        OR: studentTurmaOr,
       },
       orderBy: { name: "asc" },
       select: {

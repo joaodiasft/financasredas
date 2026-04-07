@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
-import { TURMAS } from "@/lib/orgConstants";
+import { inflowWhereForTurmaName, normalizeTurmasForStorage, resolveStoredGroupField } from "@/lib/turmaCanonical";
 
 function parseTurmasJson(s: string | null): string[] {
   if (!s) return [];
@@ -40,16 +40,6 @@ const createSchema = z.object({
   fixedBillId: z.string().optional().nullable(),
 });
 
-function normalizeTurmas(arr: string[] | undefined) {
-  if (!arr?.length) return { json: null as string | null, primary: null as string | null };
-  const valid = (TURMAS as readonly string[]).filter((t) => arr.includes(t));
-  const uniq = Array.from(new Set(valid)).slice(0, 2);
-  return {
-    json: uniq.length ? JSON.stringify(uniq) : null,
-    primary: uniq[0] ?? null,
-  };
-}
-
 export async function GET(request: Request) {
   const session = await getSessionUser();
   if (!session) {
@@ -68,12 +58,8 @@ export async function GET(request: Request) {
 
   const andParts: Prisma.TransactionWhereInput[] = [];
   if (groupName && type === "inflow") {
-    andParts.push({
-      OR: [
-        { group: groupName },
-        { turmas: { contains: `"${groupName}"` } },
-      ],
-    });
+    const tw = inflowWhereForTurmaName(groupName);
+    andParts.push({ OR: tw.OR });
   }
   if (q) {
     andParts.push({
@@ -134,8 +120,8 @@ export async function POST(request: Request) {
   const status = data.status ?? "pending";
   const priority = data.type === "outflow" ? data.priority ?? "medium" : data.priority ?? null;
 
-  const { json: turmasJson, primary: turmaPrimary } = normalizeTurmas(data.turmas);
-  const groupVal = data.group ?? turmaPrimary;
+  const { json: turmasJson, primary: turmaPrimary } = normalizeTurmasForStorage(data.turmas);
+  const groupVal = resolveStoredGroupField(data.group ?? null, turmaPrimary);
 
   if (data.studentId) {
     const st = await prisma.student.findUnique({ where: { id: data.studentId } });

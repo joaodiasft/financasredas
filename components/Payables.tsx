@@ -105,7 +105,7 @@ export function Payables() {
   });
 
   const summary = payData?.summary ?? summaryDefault;
-  const items = payData?.items ?? [];
+  const items = useMemo(() => payData?.items ?? [], [payData?.items]);
   const fixedBills = (fixedData ?? []).filter((f) => f.active);
   const yearGrid = yearGridData?.grid ?? {};
 

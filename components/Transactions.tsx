@@ -103,7 +103,7 @@ export function Transactions({ type }: TransactionsProps) {
     enabled: !isInflow,
   });
 
-  const rows = data ?? [];
+  const rows = useMemo(() => data ?? [], [data]);
 
   const stats = useMemo(() => {
     const totalPaid = rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);

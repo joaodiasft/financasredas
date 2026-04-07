@@ -18,7 +18,8 @@
     "import:extracts": "tsx scripts/import-downloads-extracts.ts",
     "students:ensure-kemilly": "tsx scripts/ensure-kemilly-and-outside-students.ts",
     "setup:fixed-expenses": "tsx scripts/setup-org-fixed-expenses.ts",
-    "db:clear-links": "tsx scripts/clear-transaction-links.ts"
+    "db:clear-links": "tsx scripts/clear-transaction-links.ts",
+    "db:ensure-columns": "tsx scripts/ensure-prisma-columns.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

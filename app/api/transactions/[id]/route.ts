@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { TURMAS } from "@/lib/orgConstants";
+import { canonicalTurmaName, normalizeTurmasForStorage } from "@/lib/turmaCanonical";
 
 function parseTurmasJson(s: string | null): string[] {
   if (!s) return [];
@@ -39,14 +40,9 @@ const patchSchema = z.object({
   needsReconcile: z.boolean().optional(),
 });
 
-function normalizeTurmas(arr: string[] | undefined) {
+function normalizeTurmasPatch(arr: string[] | undefined) {
   if (arr === undefined) return undefined;
-  const valid = (TURMAS as readonly string[]).filter((t) => arr.includes(t));
-  const uniq = Array.from(new Set(valid)).slice(0, 2);
-  return {
-    json: uniq.length ? JSON.stringify(uniq) : null,
-    primary: uniq[0] ?? null,
-  };
+  return normalizeTurmasForStorage(arr);
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -73,20 +69,25 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const u = parsed.data;
-  const turmaNorm = u.turmas !== undefined ? normalizeTurmas(u.turmas) : undefined;
+  const turmaNorm = u.turmas !== undefined ? normalizeTurmasPatch(u.turmas) : undefined;
 
   let turmaAmountsJson: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue | undefined;
   if (u.turmaAmounts !== undefined) {
     if (u.turmaAmounts === null) {
       turmaAmountsJson = Prisma.JsonNull;
     } else {
-      const allowed = new Set(TURMAS as readonly string[]);
       const rawKeys = Object.keys(u.turmaAmounts);
-      const entries = Object.entries(u.turmaAmounts).filter(([k]) => allowed.has(k));
+      const entries = Object.entries(u.turmaAmounts)
+        .map(([k, v]) => {
+          const ck = canonicalTurmaName(k) ?? ((TURMAS as readonly string[]).includes(k) ? k : null);
+          if (!ck || typeof v !== "number") return null;
+          return [ck, v] as [string, number];
+        })
+        .filter((x): x is [string, number] => x != null);
       if (rawKeys.length > 0 && entries.length === 0) {
         return NextResponse.json({ error: "Turmas inválidas em turmaAmounts." }, { status: 400 });
       }
-      const sum = entries.reduce((s, [, v]) => s + v, 0);
+      const sum = entries.reduce((s, [, val]) => s + val, 0);
       const target = u.amount ?? existing.amount;
       if (entries.length && Math.abs(sum - target) > 0.02) {
         return NextResponse.json(
@@ -115,7 +116,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       ...(u.amount !== undefined ? { amount: u.amount } : {}),
       ...(u.status !== undefined ? { status: u.status } : {}),
       ...(u.account !== undefined ? { account: u.account } : {}),
-      ...(u.group !== undefined ? { group: u.group } : {}),
+      ...(u.group !== undefined
+        ? {
+            group:
+              u.group === null || String(u.group).trim() === ""
+                ? null
+                : canonicalTurmaName(String(u.group).trim()) ?? String(u.group).trim(),
+          }
+        : {}),
       ...(u.priority !== undefined ? { priority: u.priority } : {}),
       ...(u.studentId !== undefined ? { studentId: u.studentId } : {}),
       ...(turmaNorm

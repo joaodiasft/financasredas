@@ -20,6 +20,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGri
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { InflowEntryModal } from "@/components/InflowEntryModal";
 import { TURMAS } from "@/lib/orgConstants";
+import { canonicalTurmaName } from "@/lib/turmaCanonical";
 import { invalidateFinancialQueries } from "@/lib/invalidateFinancialQueries";
 
 type TurmaItem = {
@@ -279,8 +280,13 @@ export function Turmas() {
       {inflowTurma && (
         <InflowEntryModal
           title={`Nova entrada — ${inflowTurma.name}`}
-          defaultGroup={inflowTurma.name}
-          defaultTurmas={(TURMAS as readonly string[]).includes(inflowTurma.name) ? [inflowTurma.name] : []}
+          defaultGroup={canonicalTurmaName(inflowTurma.name) ?? inflowTurma.name}
+          defaultTurmas={
+            (() => {
+              const n = canonicalTurmaName(inflowTurma.name) ?? inflowTurma.name;
+              return (TURMAS as readonly string[]).includes(n) ? [n] : [];
+            })()
+          }
           onClose={() => setInflowTurma(null)}
           onSaved={() => {
             invalidateFinancialQueries(queryClient);

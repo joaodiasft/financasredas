@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
+import { paidInflowWhereForTurmaName, turmaNameVariantsForStudentMatch } from "@/lib/turmaCanonical";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -24,26 +26,21 @@ export async function GET() {
 
   const items = await Promise.all(
     groups.map(async (g) => {
+      const basePaid = paidInflowWhereForTurmaName(g.name);
       const paidAll = await prisma.transaction.aggregate({
-        where: { type: "inflow", status: "paid", group: g.name },
+        where: basePaid,
         _sum: { amount: true },
       });
       const thisM = await prisma.transaction.aggregate({
         where: {
-          type: "inflow",
-          status: "paid",
-          group: g.name,
-          date: { gte: startThis },
-        },
+          AND: [basePaid, { date: { gte: startThis } }],
+        } as Prisma.TransactionWhereInput,
         _sum: { amount: true },
       });
       const prevM = await prisma.transaction.aggregate({
         where: {
-          type: "inflow",
-          status: "paid",
-          group: g.name,
-          date: { gte: startPrev, lte: endPrev },
-        },
+          AND: [basePaid, { date: { gte: startPrev, lte: endPrev } }],
+        } as Prisma.TransactionWhereInput,
         _sum: { amount: true },
       });
 
@@ -58,10 +55,11 @@ export async function GET() {
       if (performance > 0.5) status = "profitable";
       else if (performance < -0.5) status = "loss";
 
+      const nameVariants = turmaNameVariantsForStudentMatch(g.name);
       const enrolled = await prisma.student.count({
         where: {
           active: true,
-          OR: [{ turma1: g.name }, { turma2: g.name }],
+          OR: nameVariants.flatMap((v) => [{ turma1: v }, { turma2: v }]),
         },
       });
 
@@ -89,11 +87,8 @@ export async function GET() {
     if (g1) {
       const s = await prisma.transaction.aggregate({
         where: {
-          type: "inflow",
-          status: "paid",
-          group: g1,
-          date: { gte: t0, lte: t1 },
-        },
+          AND: [paidInflowWhereForTurmaName(g1), { date: { gte: t0, lte: t1 } }],
+        } as Prisma.TransactionWhereInput,
         _sum: { amount: true },
       });
       A = Math.round(s._sum.amount ?? 0);
@@ -101,11 +96,8 @@ export async function GET() {
     if (g2) {
       const s = await prisma.transaction.aggregate({
         where: {
-          type: "inflow",
-          status: "paid",
-          group: g2,
-          date: { gte: t0, lte: t1 },
-        },
+          AND: [paidInflowWhereForTurmaName(g2), { date: { gte: t0, lte: t1 } }],
+        } as Prisma.TransactionWhereInput,
         _sum: { amount: true },
       });
       B = Math.round(s._sum.amount ?? 0);

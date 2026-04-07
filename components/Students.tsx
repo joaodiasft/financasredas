@@ -208,7 +208,7 @@ export function StudentFormModal({
 
   useEffect(() => {
     setPaysOutsideDraft(initial?.paysOutside ?? false);
-  }, [initial?.id]);
+  }, [initial?.id, initial?.paysOutside]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
