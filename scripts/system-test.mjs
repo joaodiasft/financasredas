@@ -84,6 +84,13 @@ async function main() {
   r = await req("/api/dashboard", auth);
   ok("GET /api/dashboard", r.res.ok && r.data && typeof r.data === "object");
 
+  r = await req("/api/me", auth);
+  ok(
+    "GET /api/me",
+    r.res.ok && r.data?.email && Object.prototype.hasOwnProperty.call(r.data, "name"),
+    JSON.stringify(r.data),
+  );
+
   r = await req("/api/groups", auth);
   ok(
     "GET /api/groups",

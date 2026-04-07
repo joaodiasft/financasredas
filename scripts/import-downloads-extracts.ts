@@ -14,14 +14,15 @@ import { extractTextFromPdfBuffer } from "../lib/extractPdfText";
 import { bankDisplayName, parseBankStatement } from "../lib/bankExtrato/parseBankStatement";
 import { persistParsedExtrato } from "../lib/importPersist";
 
+/** Ordem pedida: MP → comprovantes → MP (2) → Nubank trimestre → MP (1). */
 const DEFAULT_FILES = [
+  "c:/Users/jcsol/Downloads/MercadoPago.pdf",
+  "c:/Users/jcsol/Downloads/comprovante_06-04-2026 17-40-53.pdf",
+  "c:/Users/jcsol/Downloads/comprovante_06-04-2026 17-41-28.pdf",
   "c:/Users/jcsol/Downloads/comprovante_06-04-2026 17-42-21.pdf",
   "c:/Users/jcsol/Downloads/MercadoPago (2).pdf",
   "c:/Users/jcsol/Downloads/NU_471756728_01JAN2026_31MAR2026.pdf",
   "c:/Users/jcsol/Downloads/MercadoPago (1).pdf",
-  "c:/Users/jcsol/Downloads/MercadoPago.pdf",
-  "c:/Users/jcsol/Downloads/comprovante_06-04-2026 17-40-53.pdf",
-  "c:/Users/jcsol/Downloads/comprovante_06-04-2026 17-41-28.pdf",
 ];
 
 async function main() {

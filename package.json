@@ -17,6 +17,7 @@
     "extrato:extract": "node scripts/extract-pdf-text.mjs",
     "extrato:build": "tsx prisma/build-extrato-data.ts",
     "import:extracts": "tsx scripts/import-downloads-extracts.ts",
+    "students:seed-batch": "tsx scripts/seed-students-redacao-batch.ts",
     "students:ensure-kemilly": "tsx scripts/ensure-kemilly-and-outside-students.ts",
     "setup:fixed-expenses": "tsx scripts/setup-org-fixed-expenses.ts",
     "db:clear-links": "tsx scripts/clear-transaction-links.ts",
