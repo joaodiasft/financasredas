@@ -1,0 +1,7 @@
+{
+  "name": "Elysian Ledger",
+  "description": "A high-end financial editorial system for small companies, featuring real-time cash flow, accounts payable, and group performance analytics.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

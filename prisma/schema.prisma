@@ -1,0 +1,146 @@
+// Redação Financeiro — PostgreSQL (Prisma Postgres / compatível com qualquer Postgres)
+// DATABASE_URL — string de conexão PostgreSQL (ex.: Prisma Postgres pooled).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Usuário do painel (acesso ao sistema)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+/// Aluno — até duas turmas (turma1, turma2)
+model Student {
+  id             String        @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  turma1         String?
+  turma2         String?
+  active         Boolean       @default(true)
+  notes          String?
+  /// Nomes extras para achar PIX no extrato (vírgula). Ex.: Kemilly Endy, K Endy
+  pixMatchNames  String?       @db.Text
+  /// Mensalidade paga fora do fluxo do sistema (ex.: conta Martha Nubank) — sem lançamento de receita aqui
+  paysOutside    Boolean       @default(false)
+  /// Onde paga e para onde vai matrícula / observação (ex.: Nubank Martha; matrícula turma X)
+  outsideNote    String?       @db.Text
+  /// Bolsa (isento ou desconto integral de mensalidade neste controle)
+  scholarship    Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  transactions   Transaction[]
+
+  @@index([active])
+  @@index([turma1])
+  @@index([turma2])
+  @@map("students")
+}
+
+/// Categorias de lançamento (receita / despesa)
+model Category {
+  id        String @id @default(cuid())
+  name      String @unique
+  kind      String // inflow | outflow | both
+  sortOrder Int    @default(0)
+
+  @@index([kind])
+  @@map("categories")
+}
+
+/// Modelo de despesa fixa mensal (gera Transaction ao “Gerar mês”)
+model FixedBill {
+  id          String   @id @default(cuid())
+  description String
+  category    String
+  amount      Float
+  account     String?
+  dueDay      Int
+  priority    String   @default("medium")
+  active      Boolean  @default(true)
+  notes       String?
+  /// Chave para calendário / filtros (ex.: aluguel)
+  slug        String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@map("fixed_bills")
+}
+
+/// Lançamento financeiro
+model Transaction {
+  id             String   @id @default(cuid())
+  date           DateTime @db.Date
+  description    String
+  category       String
+  amount         Float
+  type           String // inflow | outflow
+  status         String // paid | pending | overdue
+  account        String?
+  group          String?
+  priority       String?
+  studentId      String?
+  student        Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  turmas         String?  @db.Text
+  /// Repasse por turma ao conciliar (JSON: { "Turma": valor })
+  turmaAmounts   Json?
+  needsReconcile Boolean  @default(false)
+  fixedBillId    String?
+  /// Dedup entre importações (sha256 estável: data+descrição+valor+tipo+conta)
+  dedupeKey      String?   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([type, date(sort: Desc)])
+  @@index([studentId])
+  @@index([date(sort: Desc)])
+  @@index([needsReconcile])
+  @@index([type, status])
+  @@index([fixedBillId])
+  @@map("transactions")
+}
+
+/// Turmas / grupos para métricas
+model Group {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  balance      Float    @default(0)
+  performance  Float    @default(0)
+  status       String
+  studentCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("groups")
+}
+
+/// Registro de cada arquivo de extrato importado (hash evita reimportar o mesmo PDF)
+model ImportSourceFile {
+  id                String   @id @default(cuid())
+  fileHash          String   @unique
+  fileName          String
+  byteSize          Int
+  bankLabel         String?
+  rowParsed         Int
+  rowInserted       Int
+  skippedDuplicates Int
+  totalInflow       Float
+  totalOutflow      Float
+  createdAt         DateTime @default(now())
+
+  @@map("import_source_files")
+}
