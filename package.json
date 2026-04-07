@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
     "test:system": "node scripts/system-test.mjs",
     "dev": "next dev",
