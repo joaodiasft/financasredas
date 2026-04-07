@@ -48,18 +48,26 @@ async function main() {
     );
   }
 
-  const loginEmail = "joao@redasmil.com";
-  const existingUser = await prisma.user.findUnique({ where: { email: loginEmail } });
-  if (!existingUser) {
-    const passwordHash = bcrypt.hashSync("redas2026", 10);
-    await prisma.user.create({
-      data: {
-        email: loginEmail,
-        password: passwordHash,
-        name: "João",
-      },
-    });
-    console.log("Usuário criado:", loginEmail);
+  /** Contas padrão (e-mail em minúsculas — o login normaliza assim). */
+  const seedUsers: { email: string; password: string; name: string }[] = [
+    { email: "claudiney@redasmil.com", password: "credas2026", name: "Claudiney" },
+    { email: "joao@redasmil.com", password: "redas2026", name: "João" },
+  ];
+
+  const primaryLoginEmail = seedUsers[0].email;
+
+  for (const u of seedUsers) {
+    const existingUser = await prisma.user.findUnique({ where: { email: u.email } });
+    if (!existingUser) {
+      await prisma.user.create({
+        data: {
+          email: u.email,
+          password: bcrypt.hashSync(u.password, 10),
+          name: u.name,
+        },
+      });
+      console.log("Usuário criado:", u.email);
+    }
   }
 
   let sort = 0;
@@ -134,8 +142,8 @@ async function main() {
 
   console.log(
     HARD_RESET
-      ? `Seed com reset. Login: ${loginEmail} — banco vazio de lançamentos; importe extratos em seguida.`
-      : `Seed seguro OK. Login: ${loginEmail} — reset total: npm run db:seed:reset`,
+      ? `Seed com reset. Login principal: ${primaryLoginEmail} — banco vazio de lançamentos; importe extratos em seguida.`
+      : `Seed seguro OK. Login principal: ${primaryLoginEmail} — reset total: npm run db:seed:reset`,
   );
 }
 

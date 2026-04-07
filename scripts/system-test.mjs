@@ -6,8 +6,8 @@
  */
 
 const BASE = process.argv[2] || process.env.TEST_BASE_URL || "http://127.0.0.1:3000";
-const EMAIL = process.env.TEST_EMAIL || "joao@redasmil.com";
-const PASS = process.env.TEST_PASSWORD || "redas2026";
+const EMAIL = process.env.TEST_EMAIL || "claudiney@redasmil.com";
+const PASS = process.env.TEST_PASSWORD || "credas2026";
 
 let passed = 0;
 let failed = 0;

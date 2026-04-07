@@ -52,8 +52,8 @@ export default function LoginPage() {
           <p className="text-slate-500 mt-1">Acesse sua conta com segurança</p>
           {process.env.NODE_ENV === "development" ? (
             <p className="text-xs text-slate-400 mt-3 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
-              Dev: após migrar o banco, rode <code className="text-[10px]">npm run db:seed</code>. Conta{" "}
-              <strong>joao@redasmil.com</strong> (senha no seed).
+              Dev: após migrar o banco, rode <code className="text-[10px]">npm run db:seed</code>. Conta principal{" "}
+              <strong>claudiney@redasmil.com</strong> (senha no seed).
             </p>
           ) : null}
         </div>

@@ -14,3 +14,5 @@ prisma/dev.db
 prisma/dev.db-journal
 # Texto bruto do PDF (CNPJ/PII); o JSON em prisma/data/ é gerado com npm run extrato:build
 prisma/sources/sicoob-extrato-raw.txt
+
+.vercel
